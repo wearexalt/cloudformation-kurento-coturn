@@ -1,0 +1,286 @@
+---
+AWSTemplateFormatVersion: 2010-09-09
+Description: "Kurento Media Server (Coturn)"
+
+Parameters:
+  KeyName:
+    Description: "Name of an existing EC2 KeyPair for SSH access to the EC2 instance"
+    Type: "AWS::EC2::KeyPair::KeyName"
+
+  LatestAmiId:
+    Type: 'AWS::SSM::Parameter::Value<AWS::EC2::Image::Id>'
+    Default: '/aws/service/ami-amazon-linux-latest/amzn2-ami-hvm-x86_64-gp2'
+
+  LatestUbuntuFocalAMI:
+    Type: 'AWS::SSM::Parameter::Value<AWS::EC2::Image::Id>'
+    Default: '/aws/service/canonical/ubuntu/server/bionic/stable/current/amd64/hvm/ebs-gp2/ami-id'
+
+  InstanceType:
+    Description: "EC2 instance type used for Kurento Media Server"
+    Type: String
+    Default: c5.large
+    AllowedValues:
+      - t2.large
+      - t2.xlarge
+      - t2.2xlarge
+      - t3.large
+      - t3.xlarge
+      - t3.2xlarge
+      - m4.large
+      - m4.xlarge
+      - m4.2xlarge
+      - m4.4xlarge
+      - m4.10xlarge
+      - m4.16xlarge
+      - m5.large
+      - m5.xlarge
+      - m5.2xlarge
+      - m5.4xlarge
+      - m5.8xlarge
+      - m5.12xlarge
+      - m5.16xlarge
+      - m5.24xlarge
+      - c4.large
+      - c4.xlarge
+      - c4.2xlarge
+      - c4.4xlarge
+      - c4.8xlarge
+      - c5.large
+      - c5.xlarge
+      - c5.2xlarge
+      - c5.4xlarge
+      - c5.9xlarge
+      - c5.12xlarge
+      - c5.18xlarge
+      - c5.24xlarge
+    ConstraintDescription: "Must be a valid EC2 instance type"
+
+  TurnUser:
+    Description: "Username for the static TURN credentials"
+    Type: String
+    Default: "kurento"
+
+  TurnPassword:
+    Description: "Password for the static TURN credentials"
+    Type: String
+    Default: "kurento"
+    NoEcho: True
+
+
+Resources:
+  KurentoMediaServer:
+    Type: "AWS::EC2::Instance"
+    Metadata:
+      Comment: Install and configure KMS
+      AWS::CloudFormation::Init:
+        config:
+          files:
+            "/opt/cfn-setup.sh":
+              source: "https://raw.githubusercontent.com/wearexalt/cloudformation-kurento-coturn/main/cfn-setup.sh"
+              context:
+                KmsVersion: "6.18.0"
+                TurnUser: !Ref "TurnUser"
+                TurnPassword: !Ref "TurnPassword"
+              mode: "000555"
+              owner: "root"
+              group: "root"
+          commands:
+            setup:
+              command: "/opt/cfn-setup.sh"
+
+    Properties:
+      ImageId: !Ref LatestUbuntuFocalAMI
+      InstanceType: !Ref "InstanceType"
+      KeyName: !Ref "KeyName"
+      SecurityGroups:
+        - !Ref "KurentoMediaServerSecurityGroup"
+      Tags:
+        - Key: "Name"
+          Value: !Ref "AWS::StackName"
+
+      # Pass a shell script to the Ubuntu AMI's user data (for `cloud-init`).
+      # Note that `sudo` is not needed: `cloud-init` already runs as root.
+      # Log file for debug: /var/log/cloud-init-output.log
+      # https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/user-data.html#user-data-shell-scripts
+      UserData:
+        Fn::Base64: !Sub |
+          #!/usr/bin/env bash
+
+          # Bash options for strict error checking.
+          set -o errexit -o errtrace -o pipefail -o nounset
+          shopt -s inherit_errexit 2>/dev/null || true
+
+          # Trace all commands (to stderr).
+          set -o xtrace
+
+          # Install and run the CloudFormation helper scripts.
+          # https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/cfn-helper-scripts-reference.html
+          apt-get update ; apt-get install --yes python3 python3-pip
+          python3 -m easy_install "https://s3.amazonaws.com/cloudformation-examples/aws-cfn-bootstrap-py3-latest.tar.gz"
+          ln -s /root/aws-cfn-bootstrap-latest/init/ubuntu/cfn-hup /etc/init.d/cfn-hup
+
+          # Trigger the CloudFormation init helper.
+          cfn-init --verbose --stack "${AWS::StackId}" --resource "KurentoMediaServer" --region "${AWS::Region}"
+
+          # Signal the WaitCondition resource with the return code from `cfn-init`.
+          cfn-signal --exit-code $? --stack "${AWS::StackId}" --resource "WaitCondition" --region "${AWS::Region}"
+
+
+  KurentoMediaServerSecurityGroup:
+    Type: "AWS::EC2::SecurityGroup"
+    Properties:
+      GroupName: !Sub "KurentoSecurityGroup ${AWS::StackName}"
+      GroupDescription: "SSH and Kurento + Coturn WebRTC ports"
+      SecurityGroupIngress:
+        - CidrIp: 0.0.0.0/0
+          Description: "Allow SSH (IPv4)"
+          IpProtocol: tcp
+          FromPort: 22
+          ToPort: 22
+        - CidrIpv6: ::/0
+          Description: "Allow SSH (IPv6)"
+          IpProtocol: tcp
+          FromPort: 22
+          ToPort: 22
+        - CidrIp: 0.0.0.0/0
+          Description: "Allow Kurento (IPv4)"
+          IpProtocol: tcp
+          FromPort: 8888
+          ToPort: 8888
+        - CidrIp: 0.0.0.0/0
+          Description: "Coturn WebAdmin (IPv4)"
+          IpProtocol: tcp
+          FromPort: 8080
+          ToPort: 8080
+        - CidrIp: 0.0.0.0/0
+          Description: "STUN TCP 80 (IPv4)"
+          IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+        - CidrIpv6: ::/0
+          Description: "STUN TCP 80 (IPv6)"
+          IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+        - CidrIp: 0.0.0.0/0
+          Description: "STUN TLS 443 (IPv4)"
+          IpProtocol: tcp
+          FromPort: 443
+          ToPort: 443
+        - CidrIpv6: ::/0
+          Description: "STUN TLS 443 (IPv6)"
+          IpProtocol: tcp
+          FromPort: 443
+          ToPort: 443
+        - CidrIp: 0.0.0.0/0
+          Description: "WebRTC port range for Kurento Media Server (IPv4 TCP)"
+          IpProtocol: tcp
+          FromPort: 40000
+          ToPort: 57000
+        - CidrIpv6: ::/0
+          Description: "WebRTC port range for Kurento Media Server (IPv6 TCP)"
+          IpProtocol: tcp
+          FromPort: 40000
+          ToPort: 57000
+        - CidrIp: 0.0.0.0/0
+          Description: "WebRTC port range for Kurento Media Server (IPv4 UDP)"
+          IpProtocol: udp
+          FromPort: 40000
+          ToPort: 57000
+        - CidrIpv6: ::/0
+          Description: "WebRTC port range for Kurento Media Server (IPv6 UDP)"
+          IpProtocol: udp
+          FromPort: 40000
+          ToPort: 57000
+        - CidrIp: 0.0.0.0/0
+          Description: "STUN UDP ports for Coturn (IPv4)"
+          IpProtocol: udp
+          FromPort: 3478
+          ToPort: 3479
+        - CidrIpv6: ::/0
+          Description: "STUN UDP ports for Coturn (IPv6)"
+          IpProtocol: udp
+          FromPort: 3478
+          ToPort: 3479
+        - CidrIp: 0.0.0.0/0
+          Description: "STUN TCP ports for Coturn (IPv4)"
+          IpProtocol: tcp
+          FromPort: 3478
+          ToPort: 3479
+        - CidrIpv6: ::/0
+          Description: "STUN TCP ports for Coturn (IPv6)"
+          IpProtocol: tcp
+          FromPort: 3478
+          ToPort: 3479
+        - CidrIp: 0.0.0.0/0
+          Description: "STUN UDP TLS ports for Coturn (IPv4)"
+          IpProtocol: udp
+          FromPort: 5349
+          ToPort: 5350
+        - CidrIpv6: ::/0
+          Description: "STUN UDP TLS ports for Coturn (IPv6)"
+          IpProtocol: udp
+          FromPort: 5349
+          ToPort: 5350
+        - CidrIp: 0.0.0.0/0
+          Description: "STUN TCP TLS ports for Coturn (IPv4)"
+          IpProtocol: tcp
+          FromPort: 5349
+          ToPort: 5350
+        - CidrIpv6: ::/0
+          Description: "STUN TCP TLS ports for Coturn (IPv6)"
+          IpProtocol: tcp
+          FromPort: 5349
+          ToPort: 5350
+        - CidrIp: 0.0.0.0/0
+          Description: "TURN UDP relay port range for Coturn (IPv4)"
+          IpProtocol: udp
+          FromPort: 57001
+          ToPort: 65535
+        - CidrIpv6: ::/0
+          Description: "TURN UDP relay port range for Coturn (IPv6)"
+          IpProtocol: udp
+          FromPort: 57001
+          ToPort: 65535
+        - CidrIp: 0.0.0.0/0
+          Description: "TURN TCP relay port range for Coturn (IPv4)"
+          IpProtocol: tcp
+          FromPort: 57001
+          ToPort: 65535
+        - CidrIpv6: ::/0
+          Description: "TURN TCP relay port range for Coturn (IPv6)"
+          IpProtocol: tcp
+          FromPort: 57001
+          ToPort: 65535
+
+  WaitCondition:
+    Type: "AWS::CloudFormation::WaitCondition"
+    CreationPolicy:
+      ResourceSignal:
+        Timeout: PT10M
+        Count: 1
+
+  VpcIPAssoc:
+    Type : "AWS::EC2::EIPAssociation"
+    Properties:
+      InstanceId: !Ref KurentoMediaServer 
+      AllocationId: "eipalloc-0e2b1e165b43b59e6"
+
+
+Outputs:
+  InstanceId:
+    Description: "ID of the EC2 instance"
+    Value:
+      Ref: KurentoMediaServer
+
+  KurentoURL:
+    Value: !Sub "ws://${KurentoMediaServer.PublicIp}:8888/kurento"
+    Description: "URL of the Kurento Media Server JSON-RPC API endpoint"
+
+  PublicDnsName:
+    Description: "Public DNS name of the EC2 instance"
+    Value: !GetAtt "KurentoMediaServer.PublicDnsName"
+
+  PublicIp:
+    Description: "Public IP address of the EC2 instance"
+    Value: !GetAtt "KurentoMediaServer.PublicIp"

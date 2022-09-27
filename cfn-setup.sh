@@ -51,6 +51,7 @@ systemctl enable kurento-media-server
 snap install core; sudo snap refresh core
 snap install --classic certbot
 ln -s /snap/bin/certbot /usr/bin/certbot
+certbot certonly --standalone --non-interactive --agree-tos -m "kurento@thatsuseful.com"
 
 # Install.
 apt-get update 
@@ -105,10 +106,10 @@ simple-log
 cli-password=$5$79a316b350311570$81df9cfb9af7f5e5a76eada31e7097b663a0670f99a3c07ded3f1c8e59c5658a
 
 # Certificate file.
-#cert=/usr/local/etc/turn_server_cert.pem
+cert=/etc/letsencrypt/live/turn.xaltexperiences.com/fullchain.pem
 
-# Private key file.
-#pkey=/usr/local/etc/turn_server_pkey.pem
+# Private key file
+pkey=/etc/letsencrypt/live/turn.xaltexperiences.com/privkey.pem
 EOF
 
 # Create the log file, with correct permissions.
@@ -131,7 +132,7 @@ shopt -s inherit_errexit 2>/dev/null || true
 # https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/instancedata-data-retrieval.html
 PRIVATE_IP="$(curl --silent "http://169.254.169.254/latest/meta-data/local-ipv4")"
 PUBLIC_IP="$(curl --silent "http://169.254.169.254/latest/meta-data/public-ipv4")"
-EXTERNAL_IP="${PUBLIC_IP}/${PRIVATE_IP}"
+EXTERNAL_IP="${PUBLIC_IP}\/${PRIVATE_IP}"
 
 # Aux function: set value to a given parameter.
 function set_parameter {

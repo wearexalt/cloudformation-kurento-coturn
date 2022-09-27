@@ -55,7 +55,7 @@ certbot certonly --standalone --non-interactive --agree-tos -m "kurento@thatsuse
 
 # Install.
 apt-get update 
-apt-get install --yes coturn certbot kurento-media-server
+apt-get install --yes coturn
 
 # Enable system service.
 tee /etc/default/coturn >/dev/null <<'EOF'

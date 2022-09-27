@@ -44,12 +44,13 @@ apt-get update ; apt-get install --yes kurento-media-server
 systemctl enable kurento-media-server
 
 
-
 # Coturn
 # ======
 
 # Certbot
-sudo add-apt-repository ppa:certbot/certbot
+snap install core; sudo snap refresh core
+snap install --classic certbot
+ln -s /snap/bin/certbot /usr/bin/certbot
 
 # Install.
 apt-get update 
@@ -130,6 +131,7 @@ shopt -s inherit_errexit 2>/dev/null || true
 # https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/instancedata-data-retrieval.html
 PRIVATE_IP="$(curl --silent "http://169.254.169.254/latest/meta-data/local-ipv4")"
 PUBLIC_IP="$(curl --silent "http://169.254.169.254/latest/meta-data/public-ipv4")"
+EXTERNAL_IP="${PUBLIC_IP}/${PRIVATE_IP}"
 
 # Aux function: set value to a given parameter.
 function set_parameter {
@@ -149,7 +151,7 @@ function set_parameter {
 
 # Config for Coturn.
 set_parameter /etc/turnserver.conf "listening-ip" "${PRIVATE_IP}" "#"
-set_parameter /etc/turnserver.conf "external-ip" "${PUBLIC_IP}/${PRIVATE_IP}" "#"
+set_parameter /etc/turnserver.conf "external-ip" "${EXTERNAL_IP}" "#"
 systemctl restart coturn
 
 # Config for Kurento Media Server.

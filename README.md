@@ -10,10 +10,6 @@ eipalloc-0e2b1e165b43b59e6
 
 Update the yaml file with this AllocationId.
 
-## Cloud Formation
-
-Create stack using yaml file.
-
 ## Coturn
 
 Update this line to match the domain in use:
@@ -21,3 +17,7 @@ Update this line to match the domain in use:
 ```
 certbot certonly --standalone --domains "turn2.xaltexperiences.com"
 ```
+
+## Cloud Formation
+
+Create stack using yaml file.

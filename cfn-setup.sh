@@ -106,10 +106,10 @@ simple-log
 cli-password=$5$79a316b350311570$81df9cfb9af7f5e5a76eada31e7097b663a0670f99a3c07ded3f1c8e59c5658a
 
 # Certificate file.
-cert=/etc/letsencrypt/live/turn.xaltexperiences.com/fullchain.pem
+cert=/etc/letsencrypt/live/turn2.xaltexperiences.com/fullchain.pem
 
 # Private key file
-pkey=/etc/letsencrypt/live/turn.xaltexperiences.com/privkey.pem
+pkey=/etc/letsencrypt/live/turn2.xaltexperiences.com/privkey.pem
 EOF
 
 # Create the log file, with correct permissions.

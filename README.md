@@ -14,4 +14,10 @@ Update the yaml file with this AllocationId.
 
 Create stack using yaml file.
 
+## Coturn
 
+Update this line to match the domain in use:
+
+```
+certbot certonly --standalone --domains "turn2.xaltexperiences.com"
+```

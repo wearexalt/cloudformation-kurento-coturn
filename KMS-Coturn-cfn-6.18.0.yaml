@@ -264,7 +264,7 @@ Resources:
     Type : "AWS::EC2::EIPAssociation"
     Properties:
       InstanceId: !Ref KurentoMediaServer 
-      AllocationId: "eipalloc-0e2b1e165b43b59e6"
+      AllocationId: "eipalloc-04bf7cfe3b289fdb1"
 
 
 Outputs:

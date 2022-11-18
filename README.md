@@ -21,3 +21,12 @@ certbot certonly --standalone --domains "turn2.xaltexperiences.com"
 ## Cloud Formation
 
 Create stack using yaml file.
+
+## Test
+
+https://icetest.info/
+
+```
+stun:turn.xaltexperiences.com:3478
+turn:turn.xaltexperiences.com:3478 Username: kurento Credential: kurento
+```

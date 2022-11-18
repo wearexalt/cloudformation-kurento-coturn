@@ -51,7 +51,7 @@ systemctl enable kurento-media-server
 snap install core; sudo snap refresh core
 snap install --classic certbot
 ln -s /snap/bin/certbot /usr/bin/certbot
-certbot certonly --standalone --domains "turn.xaltexperiences.com" --non-interactive --agree-tos -m "kurento@thatsuseful.com"
+certbot certonly --standalone --domains "turn2.xaltexperiences.com" --non-interactive --agree-tos -m "kurento@thatsuseful.com"
 
 # Install.
 apt-get update 

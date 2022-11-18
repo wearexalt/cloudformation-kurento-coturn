@@ -253,19 +253,18 @@ Resources:
           FromPort: 57001
           ToPort: 65535
 
+  VpcIPAssoc:
+    Type: "AWS::EC2::EIPAssociation"
+    Properties:
+      InstanceId: !Ref KurentoMediaServer 
+      AllocationId: "eipalloc-04bf7cfe3b289fdb1"
+
   WaitCondition:
     Type: "AWS::CloudFormation::WaitCondition"
     CreationPolicy:
       ResourceSignal:
         Timeout: PT10M
         Count: 1
-
-  VpcIPAssoc:
-    Type : "AWS::EC2::EIPAssociation"
-    Properties:
-      InstanceId: !Ref KurentoMediaServer 
-      AllocationId: "eipalloc-04bf7cfe3b289fdb1"
-
 
 Outputs:
   InstanceId:
